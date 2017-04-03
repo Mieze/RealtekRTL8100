@@ -279,6 +279,8 @@ enum
 #define net_device rtl8101_private
 #define netdev_priv(x)  ((struct rtl8101_private *)x)
 
+#define BMCR_SPEED10	0x0000
+
 #define DISABLED_CODE 0
 
 struct pci_dev {
@@ -288,5 +290,57 @@ struct pci_dev {
     UInt16 subsystem_device;
 };
 
-#define eee_enable tp->eeeEnable
+#define eee_enable 1
+
+#define s0_magic_packet 0
+
+/**
+ * is_zero_ether_addr - Determine if give Ethernet address is all zeros.
+ * @addr: Pointer to a six-byte array containing the Ethernet address
+ *
+ * Return true if the address is all zeroes.
+ *
+ * Please note: addr must be aligned to u16.
+ */
+static inline bool is_zero_ether_addr(const u8 *addr)
+{
+#if defined(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS)
+    return ((*(const u32 *)addr) | (*(const u16 *)(addr + 4))) == 0;
+#else
+    return (*(const u16 *)(addr + 0) |
+            *(const u16 *)(addr + 2) |
+            *(const u16 *)(addr + 4)) == 0;
+#endif
+}
+
+/**
+ * is_multicast_ether_addr - Determine if the Ethernet address is a multicast.
+ * @addr: Pointer to a six-byte array containing the Ethernet address
+ *
+ * Return true if the address is a multicast address.
+ * By definition the broadcast address is also a multicast address.
+ */
+static inline bool is_multicast_ether_addr(const u8 *addr)
+{
+    return 0x01 & addr[0];
+}
+
+/**
+ * is_valid_ether_addr - Determine if the given Ethernet address is valid
+ * @addr: Pointer to a six-byte array containing the Ethernet address
+ *
+ * Check that the Ethernet address (MAC) is not 00:00:00:00:00:00, is not
+ * a multicast address, and is not FF:FF:FF:FF:FF:FF.
+ *
+ * Return true if the address is valid.
+ *
+ * Please note: addr must be aligned to u16.
+ */
+static inline bool is_valid_ether_addr(const u8 *addr)
+{
+    /* FF:FF:FF:FF:FF:FF is a multicast address so we don't need to
+     * explicitly check for it here. */
+    return !is_multicast_ether_addr(addr) && !is_zero_ether_addr(addr);
+}
+
 #endif

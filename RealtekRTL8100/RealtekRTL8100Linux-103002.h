@@ -1,4 +1,4 @@
-/* RealtekRTL8100Linux-102400.h -- Definitions shared with the linux driver code.
+/* RealtekRTL8100Linux-103002.h -- Definitions shared with the linux driver code.
  *
  * Copyright (c) 2014 Laura Müller <laura-mueller@uni-duesseldorf.de>
  * All rights reserved.
@@ -15,7 +15,7 @@
  *
  * Driver for Realtek RTL8100x PCIe fast ethernet controllers.
  *
- * This driver is based on Realtek's r8101 Linux driver (1.024.00).
+ * This driver is based on Realtek's r8101 Linux driver (1.030.02).
  */
 
 /*
@@ -24,7 +24,7 @@
  # r8101 is the Linux device driver released for Realtek Fast Ethernet
  # controllers with PCI-Express interface.
  #
- # Copyright(c) 2013 Realtek Semiconductor Corp. All rights reserved.
+ # Copyright(c) 2016 Realtek Semiconductor Corp. All rights reserved.
  #
  # This program is free software; you can redistribute it and/or modify it
  # under the terms of the GNU General Public License as published by the Free
@@ -55,6 +55,29 @@
 #include "mii.h"
 #include "ethertool.h"
 
+#define RTL_ALLOC_SKB_INTR(tp, length) dev_alloc_skb(length)
+#ifdef CONFIG_R8101_NAPI
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0)
+#undef RTL_ALLOC_SKB_INTR
+#define RTL_ALLOC_SKB_INTR(tp, length) napi_alloc_skb(&tp->napi, length)
+#endif
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0)
+#define netdev_features_t  u32
+#endif
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,37)
+#define ENABLE_R8101_PROCFS
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
+#define NETIF_F_HW_VLAN_RX	NETIF_F_HW_VLAN_CTAG_RX
+#define NETIF_F_HW_VLAN_TX	NETIF_F_HW_VLAN_CTAG_TX
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0)
 #define __devinit
 #define __devexit
@@ -75,6 +98,14 @@
 #define IRQ_HANDLED	1
 #define IRQ_NONE	0
 #define IRQ_RETVAL(x)
+#endif
+
+#ifndef NETIF_F_RXALL
+#define NETIF_F_RXALL  0
+#endif
+
+#ifndef NETIF_F_RXFCS
+#define NETIF_F_RXFCS  0
 #endif
 
 #ifndef HAVE_FREE_NETDEV
@@ -126,6 +157,25 @@ RTL_SET_VLAN;
 #define RTL_NET_DEVICE_OPS(ops)	dev->netdev_ops=&ops
 #endif
 
+#ifndef FALSE
+#define FALSE 0
+#endif
+
+#ifndef TRUE
+#define TRUE  1
+#endif
+
+#ifndef false
+#define false 0
+#endif
+
+#ifndef true
+#define true  1
+#endif
+
+//Hardware will continue interrupt 10 times after interrupt finished.
+#define RTK_KEEP_INTERRUPT_COUNT (10)
+
 //Due to the hardware design of RTL8101E, the low 32 bit address of receive
 //buffer must be 8-byte alignment.
 #ifndef NET_IP_ALIGN
@@ -141,12 +191,12 @@ RTL_SET_VLAN;
 #define NAPI_SUFFIX		""
 #endif
 
-#define RTL8101_VERSION "1.024.00" NAPI_SUFFIX
+#define RTL8101_VERSION "1.030.02" NAPI_SUFFIX
 #define MODULENAME "r8101"
 #define PFX MODULENAME ": "
 
 #define GPL_CLAIM "\
-r8101  Copyright (C) 2013  Realtek NIC software team <nicfae@realtek.com> \n \
+r8101  Copyright (C) 2016  Realtek NIC software team <nicfae@realtek.com> \n \
 This program comes with ABSOLUTELY NO WARRANTY; for details, please see <http://www.gnu.org/licenses/>. \n \
 This is free software, and you are welcome to redistribute it under certain conditions; see <http://www.gnu.org/licenses/>. \n"
 
@@ -164,7 +214,7 @@ printk( "Assertion failed! %s,%s,%s,line=%d\n",	\
 #define dprintk(fmt, args...)	do {} while (0)
 #endif /* RTL8101_DEBUG */
 
-#endif /* DISABLED_CODE */
+#endif /* RTL8101_DEBUG */
 
 #define R8101_MSG_DEFAULT \
 (NETIF_MSG_DRV | NETIF_MSG_PROBE | NETIF_MSG_IFUP | NETIF_MSG_IFDOWN)
@@ -198,8 +248,15 @@ printk( "Assertion failed! %s,%s,%s,line=%d\n",	\
 #define InterFrameGap	0x03	/* 3 means InterFrameGap = the shortest one */
 #define RxEarly_off_V1 (0x07 << 11)
 #define RxEarly_off_V2 (1 << 11)
+#define Rx_Single_fetch_V2 (1 << 14)
 
-#define R8101_REGS_SIZE		256
+#define R8101_REGS_SIZE		(256)
+#define R8101_MAC_REGS_SIZE     (256)
+#define R8101_PHY_REGS_SIZE     (16*2)
+#define R8101_EPHY_REGS_SIZE  	(31*2)
+#define R8101_ERI_REGS_SIZE  	(0x100)
+#define R8101_REGS_DUMP_SIZE    (0x400)
+#define R8101_PCI_REGS_SIZE  	(0x100)
 #define R8101_NAPI_WEIGHT	64
 
 #define NUM_TX_DESC	1024	/* Number of Tx descriptor registers */
@@ -276,6 +333,7 @@ typedef int *napi_budget;
 #define napi dev
 #define RTL_NAPI_CONFIG(ndev, priv, function, weig)	ndev->poll=function;	\
 ndev->weight=weig;
+#define RTL_NAPI_DEL(priv)
 #define RTL_NAPI_QUOTA(budget, ndev)			min(*budget, ndev->quota)
 #define RTL_GET_PRIV(stuct_ptr, priv_struct)		netdev_priv(stuct_ptr)
 #define RTL_GET_NETDEV(priv_ptr)
@@ -294,6 +352,7 @@ typedef struct napi_struct *napi_ptr;
 typedef int napi_budget;
 
 #define RTL_NAPI_CONFIG(ndev, priv, function, weight)	netif_napi_add(ndev, &priv->napi, function, weight)
+#define RTL_NAPI_DEL(priv)   				netif_napi_del(&priv->napi)
 #define RTL_NAPI_QUOTA(budget, ndev)			min(budget, budget)
 #define RTL_GET_PRIV(stuct_ptr, priv_struct)		container_of(stuct_ptr, priv_struct, stuct_ptr)
 #define RTL_GET_NETDEV(priv_ptr)			struct net_device *dev = priv_ptr->dev;
@@ -782,12 +841,13 @@ enum RTL8101_DSM_STATE {
 };
 
 enum RTL8101_registers {
-    MAC0 = 0,		/* Ethernet hardware address. */
+    MAC0 = 0x00,		/* Ethernet hardware address. */
     MAC4 = 0x04,
-    MAR0 = 8,		/* Multicast filter. */
+    MAR0 = 0x08,		/* Multicast filter. */
     MAR1 = 0x0C,    /* Multicast filter. */
     CounterAddrLow = 0x10,
     CounterAddrHigh = 0x14,
+    CustomLED = 0x18,
     TxDescStartAddrLow = 0x20,
     TxDescStartAddrHigh = 0x24,
     TxHDescStartAddrLow = 0x28,
@@ -809,7 +869,8 @@ enum RTL8101_registers {
     Config4 = 0x55,
     Config5 = 0x56,
     TDFNR   = 0x57,
-    TimeIntr = 0x58,
+    TimeInt0 = 0x58,
+    TimeInt1  = 0x5C,
     PHYAR = 0x60,
     CSIDR = 0x64,
     CSIAR = 0x68,
@@ -820,9 +881,12 @@ enum RTL8101_registers {
     ERIDR = 0x70,
     ERIAR = 0x74,
     EPHYAR = 0x80,
+    TimeInt2 = 0x8C,
     OCPDR  = 0xB0,
     MACOCP = 0xB0,
     OCPAR  = 0xB4,
+    SecMAC0 = 0xB4,
+    SecMAC4 = 0xB8,
     PHYOCP = 0xB8,
     DBG_reg = 0xD1,
     MCUCmd_reg = 0xD3,
@@ -832,6 +896,7 @@ enum RTL8101_registers {
     RxDescAddrLow = 0xE4,
     RxDescAddrHigh = 0xE8,
     MTPS = 0xEC,
+    TimeInt3 = 0xF4,
     PHYIO = 0xF8,
 };
 
@@ -888,6 +953,7 @@ enum RTL8101_register_content {
     /* RxConfigBits */
     Reserved2_shift = 13,
     RxCfgDMAShift = 8,
+    RxCfg_128_int_en = (1 << 15),
     RxCfg_9356SEL = (1 << 6),
     
     /* TxConfigBits */
@@ -946,6 +1012,7 @@ enum RTL8101_register_content {
     INTT_3		= 0x0003,
     
     /* rtl8101_PHYstatus */
+    PowerSaveStatus = 0x80,
     TxFlowCtrl = 0x40,
     RxFlowCtrl = 0x20,
     _100bps = 0x08,
@@ -953,6 +1020,8 @@ enum RTL8101_register_content {
     LinkStatus = 0x02,
     FullDup = 0x01,
     
+    /* ResetCounterCommand */
+    CounterReset = 0x1,
     /* DumpCounterCommand */
     CounterDump = 0x8,
     
@@ -1034,6 +1103,11 @@ enum _DescStatusBit {
     /* Tx private */
     /*------ offset 0 of tx descriptor ------*/
     LargeSend	= (1 << 27), /* TCP Large Send Offload (TSO) */
+    GiantSendv4     = (1 << 26), /* TCP Giant Send Offload V4 (GSOv4) */
+    GiantSendv6     = (1 << 25), /* TCP Giant Send Offload V6 (GSOv6) */
+    GSendL4OffShift = 18,
+    GSendL4OffMask  = 0x7fU,
+    LargeSend_DP = (1 << 16), /* TCP Large Send Offload (TSO) */
     MSSShift	= 16,        /* MSS value position */
     MSSMask		= 0x7FFU,    /* MSS value 11 bits */
     TxIPCS		= (1 << 18), /* Calculate IP checksum */
@@ -1045,7 +1119,7 @@ enum _DescStatusBit {
     TxUDPCS_C	= (1 << 31), /* Calculate UDP/IP checksum */
     TxTCPCS_C	= (1 << 30), /* Calculate TCP/IP checksum */
     TxIPCS_C	= (1 << 29), /* Calculate IP checksum */
-    TxIPV6_C    = (1 << 28), /* IPv6 packet */
+    TxIPV6F_C       = (1 << 28), /* Indicate it is an IPv6 packet */
     MSSShift_C	= 18,        /* MSS value position */
     L4OffMask   = 0x3ffU,    /* Level 4 header offset mask */
     /*@@@@@@ offset 4 of tx descriptor => bits for RTL8102E only		end @@@@@@*/
@@ -1190,6 +1264,7 @@ struct rtl8101_private {
     u32 tx_tcp_csum_cmd;
     u32 tx_udp_csum_cmd;
     u32 tx_ip_csum_cmd;
+    u32 tx_ipv6_csum_cmd;
     
 #endif /* DISABLED_CODE */
 
@@ -1218,7 +1293,7 @@ struct rtl8101_private {
 #endif /* DISABLED_CODE */
 
     u16 cp_cmd;
-
+    
 #if DISABLED_CODE
 
     u16 intr_mask;
@@ -1228,7 +1303,7 @@ struct rtl8101_private {
     int phy_auto_nego_reg;
     
 #if DISABLED_CODE
-    
+
     u8 org_mac_addr[NODE_ADDRESS_SIZE];
     struct rtl8101_counters *tally_vaddr;
     dma_addr_t tally_paddr;
@@ -1264,9 +1339,50 @@ struct rtl8101_private {
     struct delayed_work task;
 #endif
     unsigned features;
+    
 #endif /* DISABLED_CODE */
 
-    UInt32 eeeEnable;
+    u8 org_pci_offset_99;
+    u8 org_pci_offset_180;
+    u8 issue_offset_99_event;
+    
+    u8 org_pci_offset_80;
+    u8 org_pci_offset_81;
+    u8 use_timer_interrrupt;
+    
+    u32 keep_intr_cnt;
+    
+    u8  HwIcVerUnknown;
+    u8  NotWrRamCodeToMicroP;
+    u8  NotWrMcuPatchCode;
+    u8  HwHasWrRamCodeToMicroP;
+    
+    u16 sw_ram_code_ver;
+    u16 hw_ram_code_ver;
+    
+    u8 rtk_enable_diag;
+    
+    u8 RequireAdcBiasPatch;
+    u16 AdcBiasPatchIoffset;
+    
+    u8 RequireAdjustUpsTxLinkPulseTiming;
+    u16 SwrCnt1msIni;
+    
+    u8 HwSuppNowIsOobVer;
+    
+    u8 RequiredSecLanDonglePatch;
+    
+    u8 RequireResetNctlBfrPhyResetOrNway;
+    
+    u8 RequireResetPhyToChgSpd;
+    
+    u8 HwSuppMagicPktVer;
+    
+#ifdef ENABLE_R8101_PROCFS
+    //Procfs support
+    struct proc_dir_entry *proc_dir;
+#endif
+    
 };
 
 enum eetype {
@@ -1294,12 +1410,46 @@ enum mcfg {
     CFG_METHOD_15,
     CFG_METHOD_16,
     CFG_METHOD_17,
+    CFG_METHOD_18,
+    CFG_METHOD_19,
     CFG_METHOD_MAX,
-    CFG_METHOD_UNKNOWN = 0xFFFFFFFFUL
+    CFG_METHOD_DEFAULT = 0xFF
 };
+
+#define LSO_32K 32000
+#define LSO_64K 64000
+
+#define NIC_MIN_PHYS_BUF_COUNT          (2)
+#define NIC_MAX_PHYS_BUF_COUNT_LSO_64K  (24)
+#define NIC_MAX_PHYS_BUF_COUNT_LSO2     (16*4)
+
+#define GTTCPHO_SHIFT                   18
+#define GTTCPHO_MAX                     0x7fU
+#define GTPKTSIZE_MAX                   0x3ffffU
+#define TCPHO_SHIFT                     18
+#define TCPHO_MAX                       0x3ffU
+#define LSOPKTSIZE_MAX                  0xffffU
+#define MSS_MAX                         0x07ffu /* MSS value */
+
+#define WAKEUP_MAGIC_PACKET_NOT_SUPPORT (0)
+#define WAKEUP_MAGIC_PACKET_V1 (1)
+#define WAKEUP_MAGIC_PACKET_V2 (2)
 
 //Ram Code Version
 #define NIC_RAMCODE_VERSION_CFG_METHOD_17 (0x0001)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_18 (0x0018)
+
+//hwoptimize
+#define HW_PATCH_SOC_LAN (BIT_0)
+#define HW_PATCH_SAMSUNG_LAN_DONGLE (BIT_2)
+
+void mdio_write(struct rtl8101_private *tp, u32 RegAddr, u32 value);
+void mdio_prot_write(struct rtl8101_private *tp, u32 RegAddr, u32 value);
+u32 mdio_read(struct rtl8101_private *tp, u32 RegAddr);
+void rtl8101_ephy_write(void __iomem *ioaddr, u32 RegAddr, u32 value);
+u16 rtl8101_ephy_read(void __iomem *ioaddr, u32 RegAddr);
+int rtl8101_eri_write(void __iomem *ioaddr, int addr, int len, u32 value, int type);
+u32 rtl8101_eri_read(void __iomem *ioaddr, int addr, int len, int type);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,34)
 #define netdev_mc_count(dev) ((dev)->mc_count)
@@ -1349,14 +1499,12 @@ u32 rtl8101_eri_read(void __iomem *ioaddr, int addr, int len, int type);
 int rtl8101_eri_write(void __iomem *ioaddr, int addr, int len, u32 value, int type);
 void mdio_write(struct rtl8101_private *tp, u32 RegAddr, u32 value);
 u32 mdio_read(struct rtl8101_private *tp, u32 RegAddr);
-int rtl8101_disable_EEE(struct rtl8101_private *tp);
 void rtl8101_powerup_pll(struct net_device *dev);
 void rtl8101_hw_ephy_config(struct net_device *dev);
 u16 rtl8101_ephy_read(void __iomem *ioaddr, u32 RegAddr);
 void rtl8101_ephy_write(void __iomem *ioaddr, u32 RegAddr, u32 value);
 void rtl8101_hw_phy_config(struct net_device *dev);
 void rtl8101_dsm(struct net_device *dev, int dev_state);
-void rtl8101_hw_d3_para(struct net_device *dev);
 void rtl8101_phy_power_down (struct net_device *dev);
 void set_offset70F(struct rtl8101_private *tp, u8 setting);
 void mac_ocp_write(struct rtl8101_private *tp, u16 reg_addr, u16 value);
@@ -1365,3 +1513,12 @@ void rtl8101_aspm_fix1(struct net_device *dev);
 void rtl8101_set_bios_setting(struct net_device *dev);
 
 
+u32 rtl8101_csi_other_fun_read(struct rtl8101_private *tp, u8 multi_fun_sel_bit, u32 addr);
+void rtl8101_csi_other_fun_write(struct rtl8101_private *tp, u8 multi_fun_sel_bit, u32 addr, u32 value);
+void rtl8101_issue_offset_99_event(struct rtl8101_private *tp);
+void rtl8101_disable_pci_offset_180(struct rtl8101_private *tp);
+void mdio_write_phy_ocp(struct rtl8101_private *tp, u16 PageNum, u32 RegAddr, u32 value);
+void rtl8101_init_pci_offset_180(struct rtl8101_private *tp);
+void ClearEthPhyBit(struct rtl8101_private *tp, u8 addr, u16 mask);
+void SetEthPhyBit(struct rtl8101_private *tp,  u8  addr, u16  mask);
+void rtl8101_set_hw_wol(struct net_device *dev, u32 wolopts);

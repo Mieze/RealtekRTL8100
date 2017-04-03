@@ -2320,10 +2320,12 @@ void RTL8100::setPhyMedium()
     
     if (tp->mcfg == CFG_METHOD_18 || tp->mcfg == CFG_METHOD_19) {
         //Disable Giga Lite
+        spin_lock_irqsave(&tp->phy_lock, flags);
         mdio_write(tp, 0x1F, 0x0A42);
         ClearEthPhyBit(tp, 0x14, BIT_9);
         mdio_write(tp, 0x1F, 0x0A40);
         mdio_write(tp, 0x1F, 0x0000);
+        spin_unlock_irqrestore(&tp->phy_lock, flags);
     }
     
     if ((speed != SPEED_100) &&
@@ -3714,22 +3716,26 @@ void RTL8100::startRTL8100(UInt16 newIntrMitigate, bool enableInterrupts)
             if (ReadReg8(0xEF) & BIT_2) {
                 u32 gphy_val;
                 
+                spin_lock_irqsave(&tp->phy_lock, flags);
                 mdio_write(tp, 0x1F, 0x0001);
                 gphy_val = mdio_read(tp, 0x1B);
                 gphy_val |= BIT_2;
                 mdio_write(tp, 0x1B, gphy_val);
                 mdio_write(tp, 0x1F, 0x0000);
+                spin_unlock_irqrestore(&tp->phy_lock, flags);
             }
         }
         
         if (tp->mcfg == CFG_METHOD_14) {
             u32 gphy_val;
             
+            spin_lock_irqsave(&tp->phy_lock, flags);
             mdio_write(tp, 0x1F, 0x0001);
             gphy_val = mdio_read(tp, 0x13);
             gphy_val |= BIT_15;
             mdio_write(tp, 0x13, gphy_val);
             mdio_write(tp, 0x1F, 0x0000);
+            spin_unlock_irqrestore(&tp->phy_lock, flags);
         }
     }
     
@@ -4139,8 +4145,10 @@ void RTL8100::hardwareD3Para()
     if (tp->mcfg == CFG_METHOD_17 || tp->mcfg == CFG_METHOD_18 ||
         tp->mcfg == CFG_METHOD_19) {
         /*disable ocp phy power saving*/
+        spin_lock_irqsave(&tp->phy_lock, flags);
         mdio_write_phy_ocp(tp, 0x0C41, 0x13, 0x0000);
         mdio_write_phy_ocp(tp, 0x0C41, 0x13, 0x0500);
+        spin_unlock_irqrestore(&tp->phy_lock, flags);
     }
     
     if (tp->bios_setting & BIT_28) {
@@ -4148,6 +4156,7 @@ void RTL8100::hardwareD3Para()
             if (!(ReadReg8(0xEF) & BIT_2)) {
                 u32 gphy_val;
                 
+                spin_lock_irqsave(&tp->phy_lock, flags);
                 mdio_write(tp, 0x1F, 0x0000);
                 mdio_write(tp, 0x04, 0x0061);
                 mdio_write(tp, 0x00, 0x1200);
@@ -4160,6 +4169,7 @@ void RTL8100::hardwareD3Para()
                 mdelay(30);
                 mdio_write(tp, 0x1f, 0x0000);
                 mdio_write(tp, 0x18, 0x8310);
+                spin_unlock_irqrestore(&tp->phy_lock, flags);
             }
         }
     }
@@ -4339,8 +4349,10 @@ void RTL8100::timerActionRTL8100(IOTimerEventSource *timer)
                 
                 /*half mode*/
                 if (!(currLinkState & FullDup)) {
+                    spin_lock_irqsave(&tp->phy_lock, flags);
                     mdio_write(tp, 0x1F, 0x0000);
                     mdio_write(tp, MII_ADVERTISE, mdio_read(tp, MII_ADVERTISE)&~(ADVERTISE_PAUSE_CAP|ADVERTISE_PAUSE_ASYM));
+                    spin_unlock_irqrestore(&tp->phy_lock, flags);
                 }
             }
             setLinkUp(currLinkState);
@@ -4350,10 +4362,12 @@ void RTL8100::timerActionRTL8100(IOTimerEventSource *timer)
             /* Perform post link operations. */
             if (tp->mcfg == CFG_METHOD_11 || tp->mcfg == CFG_METHOD_12 ||
                 tp->mcfg == CFG_METHOD_13) {
+                spin_lock_irqsave(&tp->phy_lock, flags);
                 mdio_write( tp, 0x1F, 0x0004);
                 data32 = mdio_read( tp, 0x10);
                 data32 &= ~0x0C00;
                 mdio_write(tp, 0x1F, 0x0000);
+                spin_unlock_irqrestore(&tp->phy_lock, flags);
             }
             if (tp->mcfg == CFG_METHOD_5 || tp->mcfg == CFG_METHOD_6 ||
                 tp->mcfg == CFG_METHOD_7 || tp->mcfg == CFG_METHOD_8)

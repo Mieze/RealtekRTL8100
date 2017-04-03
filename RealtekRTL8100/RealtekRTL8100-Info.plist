@@ -9,7 +9,7 @@
 	<key>CFBundleIconFile</key>
 	<string></string>
 	<key>CFBundleIdentifier</key>
-	<string>com.insanelymac.${PRODUCT_NAME:rfc1034identifier}</string>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -28,18 +28,6 @@
 		<dict>
 			<key>CFBundleIdentifier</key>
 			<string>com.insanelymac.${PRODUCT_NAME:rfc1034identifier}</string>
-			<key>Model</key>
-			<string>RTL8111</string>
-			<key>Vendor</key>
-			<string>Realtek</string>
-			<key>enableEEE</key>
-			<true/>
-			<key>enableTSO4</key>
-			<true/>
-			<key>enableCSO6</key>
-			<true/>
-			<key>intrMitigate</key>
-			<integer>0</integer>
 			<key>IOClass</key>
 			<string>RTL8100</string>
 			<key>IOPCIMatch</key>
@@ -48,6 +36,26 @@
 			<integer>1000</integer>
 			<key>IOProviderClass</key>
 			<string>IOPCIDevice</string>
+			<key>Driver_Version</key>
+			<string>$MODULE_VERSION</string>
+			<key>Model</key>
+			<string>RTL8100</string>
+			<key>Vendor</key>
+			<string>Realtek</string>
+			<key>enableCSO6</key>
+			<true/>
+			<key>enableTSO4</key>
+			<true/>
+			<key>enableTSO6</key>
+			<true/>
+			<key>disableASPM</key>
+			<true/>
+			<key>enableEEE</key>
+			<true/>
+			<key>rxPolling</key>
+			<true/>
+			<key>intrMitigate</key>
+			<integer>0</integer>
 		</dict>
 	</dict>
 	<key>NSHumanReadableCopyright</key>
