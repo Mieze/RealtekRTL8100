@@ -50,5 +50,11 @@ Troubleshooting
 Changelog
 ---------
 
+Version 2.0.0 (2017-04-01):
+ - Uses Apple's private driver interface introduced with 10.8.
+ - Supports packet scheduling with QFQ.
+ - Adds support for the RTL8107E.
+ - Adds support for flow control and EEE.
+
 Version 1.0.0 (2014-05-24):
 - First offical release.
