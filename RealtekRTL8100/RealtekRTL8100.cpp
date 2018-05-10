@@ -3174,19 +3174,20 @@ bool RTL8100::initRTL8100()
         tp->mcfg == CFG_METHOD_18 || tp->mcfg == CFG_METHOD_19) {
         *(u32*)&macAddr[0] = rtl8101_eri_read(baseAddr, 0xE0, 4, ERIAR_ExGMAC);
         *(u16*)&macAddr[2] = rtl8101_eri_read(baseAddr, 0xE4, 2, ERIAR_ExGMAC);
+        
+        if (is_valid_ether_addr((uint8_t*)macAddr))
+            rtl8101_rar_set(tp, (uint8_t*)macAddr);
     } else {
         if (tp->eeprom_type != EEPROM_TYPE_NONE) {
             /* Get MAC address from EEPROM */
             macAddr[0] = rtl_eeprom_read_sc(tp, 7);
             macAddr[1] = rtl_eeprom_read_sc(tp, 8);
             macAddr[2] = rtl_eeprom_read_sc(tp, 9);
-            WriteReg8(Cfg9346, Cfg9346_Unlock);
-            WriteReg32(MAC0, (macAddr[1] << 16) | macAddr[0]);
-            WriteReg16(MAC4, macAddr[2]);
-            WriteReg8(Cfg9346, Cfg9346_Lock);
+            
+            if (is_valid_ether_addr((uint8_t*)macAddr))
+                rtl8101_rar_set(tp, (uint8_t*)macAddr);
         }
     }
-    rtl8101_rar_set(tp, (uint8_t*)macAddr);
 
 	for (i = 0; i < MAC_ADDR_LEN; i++) {
 		currMacAddr.bytes[i] = ReadReg8(MAC0 + i);
