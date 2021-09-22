@@ -1,6 +1,8 @@
 RealtekRTL8100
 ==============
 
+<H3>This project has been archived because all development activites have been stopped a long time ago and there won't be any updates in the future.
+
  Installation
 ------------
 
